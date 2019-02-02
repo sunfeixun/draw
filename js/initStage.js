@@ -6,8 +6,7 @@ let draw;
 
 let go = function() {
 
-	let colors1 = ['#6598fe','#00fe00','#0000fe','#fefe00','#32fe32','#65cb65','#32cbfe'],
-		colors2 = ['#fe9800','#989898','#fe00fe','#fe0000','#9800fe','#650000','#980000'];	
+	let colors1 = ['#6598fe','#00fe00','#0000fe','#fefe00','#32fe32','#65cb65','#32cbfe','#fe9800','#989898','#fe00fe','#fe0000','#9800fe']
 	//初始化舞台
 
 	stage = new createjs.Stage(document.getElementById('canvas'));
@@ -23,7 +22,7 @@ let go = function() {
 	const boardTop = 95, marginTop = 10, marginLr = 10, marginBottom = 5;
 
 	let drawMask = null;
-	let controller, thickButton, thickSlide, slideWidth = 450;
+	let controller, thickButton, thickSlide, slideWidth = 510;
 	const minThick = 5, maxThick = 70;
 
 	//预加载资源
@@ -78,7 +77,7 @@ let go = function() {
 
 		//线条粗细控制板
 		let slideContainer = controller.addChild(new createjs.Container);
-		let pos = {x:195,y:105};
+		let pos = {x:170,y:105};
 		let thickSlidebg = new createjs.Shape;
 		thickSlide = new createjs.Shape;
 		thickButton = new createjs.Shape;
@@ -102,20 +101,13 @@ let go = function() {
 
 		//颜色选择面板
 		let colorContainer = controller.addChild(new createjs.Container);
-		let beginx = 200, sumX = 75, y1 = 198, sumY = 45;
+		let beginx = 170, sumX = 45, y1 = 221, sumY = 45;
 		let colorCircle;
 
 		for(let i=0;i<colors1.length;i++){
 			colorCircle = new createjs.Shape();
 			colorCircle.graphics.f(colors1[i]).dc(0,0,15);
 			colorCircle.set({x:beginx+(i*sumX),y:y1,val:colors1[i]});
-			colorContainer.addChild(colorCircle);
-		}
-
-		for(i=0;i<colors2.length;i++){
-			colorCircle = new createjs.Shape();
-			colorCircle.graphics.f(colors2[i]).dc(0,0,15);
-			colorCircle.set({x:beginx+(i*sumX),y:y1+sumY,val:colors2[i]});
 			colorContainer.addChild(colorCircle);
 		}
 
