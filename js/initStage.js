@@ -12,12 +12,14 @@ let go = function() {
 	stage = new createjs.Stage(document.getElementById('canvas'));
 	createjs.Touch.enable(stage);
 	let container = stage.addChild(new createjs.Container);
+	let rollEvent = null, oldy, limitY;
 	//createjs.Ticker.framerate = 60;
 	//createjs.Ticker.timingMode = 'raf';
 	//createjs.Ticker.addEventListener("tick", stage);
 
 	//创建画板构造函数
 	let draw = new Drawer(colors1[0],5);
+	let drawContainer;
 	let controller, thickButton, thickSlide, slideWidth = 400;
 	const minThick = 5, maxThick = 70;
 
@@ -39,7 +41,7 @@ let go = function() {
 		container.addChild(new createjs.Bitmap(queue.getResult('bg.jpg')));
 
 		//画板UI
-		let drawContainer = container.addChild(new createjs.Container);
+		drawContainer = container.addChild(new createjs.Container);
 		addImages(['drawbg.png','back.png','save.png',draw],[null,{x:10,y:20,funcName:'back'},{x:570,y:20,funcName:'save'},{x:12,y:94}],drawContainer);
 		drawContainer.regX = drawContainer.getBounds().width/2;
 		drawContainer.regY = drawContainer.getBounds().height/2;
@@ -48,7 +50,6 @@ let go = function() {
 		draw.addBg(new createjs.Bitmap(queue.getResult('drawer.png')));
 
 		drawContainer.on('click',drawFunc);
-
 
 		//控制总容器
 		controller = container.addChild(new createjs.Container);
@@ -75,9 +76,10 @@ let go = function() {
 
 		slideContainer.on('pressmove',swipSlide,null,false,thickButton);
 
+		controller.slideControler = slideContainer;
+
+
 		//颜色选择面板
-
-
 		let colorContainer = controller.addChild(new createjs.Container);
 		let beginx = 183, sumX = 58, y1 = 143, y2 = 188;
 		let colorCircle;
@@ -97,6 +99,11 @@ let go = function() {
 		}
 
 		colorContainer.on('click',selectColor);
+
+		controller.colorControler = colorContainer;
+		///////
+
+		container.on('mousedown',roll);
 
 		resize();
 
@@ -129,7 +136,16 @@ let go = function() {
 		let bound = controller.getBounds();
 		controller.regX = bound.width/2;
 		controller.x = width/2;
-		controller.y = document.documentElement.clientHeight - bound.height - 30;
+		//controller.y = document.documentElement.clientHeight - bound.height - 30;
+		controller.y = drawContainer.y + drawContainer.getBounds().height/2 + 50;
+
+		if(controller.y + bound.height > document.documentElement.clientHeight){
+			rollEvent = rollEvent || container.on('pressmove',roll);
+			limitY = -(controller.y + bound.height - document.documentElement.clientHeight + 50);
+		}else{
+			rollEvent && container.off('pressmove',rollEvent);
+			rollEvent = null;
+		}
 	}
 
 	function swipSlide(e,btn) {
@@ -141,6 +157,21 @@ let go = function() {
 			draw.thickness((maxThick-minThick)*(e.localX/slideWidth)+minThick);
 			stage.update();
 		}
+	}
+
+	function roll(e) {
+		if(draw.contains(e.target) || controller.slideControler.contains(e.target) || controller.colorControler.contains(e.target)) return;
+
+		if(e.type==='mousedown') oldy = e.localY;
+		container.y += e.localY - oldy;
+		oldy = e.localY;
+
+		if(container.y>0||container.y<limitY){
+			container.y = container.y>0? 0:container.y;
+			container.y = container.y<limitY? limitY:container.y;
+		}
+
+		stage.update();
 	}
 };
 
@@ -206,7 +237,6 @@ let go = function() {
 			this.custom.staticBoard.removeChild(unline);
 			stage.update();
 		}
-		console.log(this.custom.staticBoard.numChildren)
 	}
 
 	p.setColor = function(color) {
