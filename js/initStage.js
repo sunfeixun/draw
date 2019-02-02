@@ -1,6 +1,7 @@
 let Drawer;
 const width = 750, height = 1700;
 let stage;
+let draw;
 //let vc = new VConsole
 
 let go = function() {
@@ -13,19 +14,21 @@ let go = function() {
 	createjs.Touch.enable(stage);
 	let container = stage.addChild(new createjs.Container);
 	let rollEvent = null, oldy, limitY;
-	//createjs.Ticker.framerate = 60;
-	//createjs.Ticker.timingMode = 'raf';
-	//createjs.Ticker.addEventListener("tick", stage);
 
 	//创建画板构造函数
-	let draw = new Drawer(colors1[0],5);
+	draw = new Drawer(colors1[0],5);
 	let drawContainer;
-	let controller, thickButton, thickSlide, slideWidth = 400;
+	let boardHeight;
+
+	const boardTop = 95, marginTop = 10, marginLr = 10, marginBottom = 5;
+
+	let drawMask = null;
+	let controller, thickButton, thickSlide, slideWidth = 450;
 	const minThick = 5, maxThick = 70;
 
 	//预加载资源
 	let queue = new createjs.LoadQueue(false);
-	let loadList = ['bg.jpg','drawbg.png','drawer.png','back.png','upcloud.png','controlbg.png','save.png']
+	let loadList = ['drawer.png','boardhead.png','back.png','controlbg.png','save.png','test1.jpg']
 	let imgPath = 'image/';
 
 	for(let i=0;i<loadList.length;i++){
@@ -38,17 +41,35 @@ let go = function() {
 
 	function loadup() {
 		//舞台背景
-		container.addChild(new createjs.Bitmap(queue.getResult('bg.jpg')));
+		//container.addChild(new createjs.Bitmap(queue.getResult('bg.jpg')));
 
 		//画板UI
 		drawContainer = container.addChild(new createjs.Container);
-		addImages(['drawbg.png','back.png','save.png',draw],[null,{x:10,y:20,funcName:'back'},{x:570,y:20,funcName:'save'},{x:12,y:94}],drawContainer);
-		drawContainer.regX = drawContainer.getBounds().width/2;
-		drawContainer.regY = drawContainer.getBounds().height/2;
-		drawContainer.x = width/2;
-		drawContainer.y = 550;
-		draw.addBg(new createjs.Bitmap(queue.getResult('drawer.png')));
 
+		let boardhead = getImage('boardhead.png');
+		boardhead.regX = boardhead.getBounds().width/2;
+		boardhead.x = width/2;
+
+		//回退和保存按钮
+		let back = getImage('back.png').set({funcName:'back',x:40,y:20});
+		let save = getImage('save.png').set({funcName:'save',x:660,y:20});
+
+
+		//画板shape
+		let boardbg = new createjs.Shape;
+		let round = 30
+		boardHeight = boardbg.graphics.f('#C6E7F4').rr(0,0,750,100,round).command;
+		draw.y = boardbg.y = boardTop;
+
+		drawMask = new createjs.Shape;
+		drawMask.height = drawMask.graphics.rr(marginLr,boardTop+marginTop,width-marginLr*2,100,round).command;
+
+		let test = getImage('test1.jpg');
+		draw.addBg(test);
+
+		draw.mask = drawMask;
+
+		drawContainer.addChild(back,save,boardhead,boardbg,draw);
 		drawContainer.on('click',drawFunc);
 
 		//控制总容器
@@ -57,7 +78,7 @@ let go = function() {
 
 		//线条粗细控制板
 		let slideContainer = controller.addChild(new createjs.Container);
-		let pos = {x:170,y:68};
+		let pos = {x:195,y:105};
 		let thickSlidebg = new createjs.Shape;
 		thickSlide = new createjs.Shape;
 		thickButton = new createjs.Shape;
@@ -81,7 +102,7 @@ let go = function() {
 
 		//颜色选择面板
 		let colorContainer = controller.addChild(new createjs.Container);
-		let beginx = 183, sumX = 58, y1 = 143, y2 = 188;
+		let beginx = 200, sumX = 75, y1 = 198, sumY = 45;
 		let colorCircle;
 
 		for(let i=0;i<colors1.length;i++){
@@ -94,20 +115,26 @@ let go = function() {
 		for(i=0;i<colors2.length;i++){
 			colorCircle = new createjs.Shape();
 			colorCircle.graphics.f(colors2[i]).dc(0,0,15);
-			colorCircle.set({x:beginx+(i*sumX),y:y2,val:colors2[i]});
+			colorCircle.set({x:beginx+(i*sumX),y:y1+sumY,val:colors2[i]});
 			colorContainer.addChild(colorCircle);
 		}
 
 		colorContainer.on('click',selectColor);
 
 		controller.colorControler = colorContainer;
-		///////
 
 		container.on('mousedown',roll);
 
 		resize();
 
-		stage.update();
+		function getImage(name,mode) {
+			let img = new createjs.Bitmap(queue.getResult(name));
+			if(mode==='center'){
+				img.regX = img.getBounds().width/2;
+				img.regY = img.getBounds().height/2;
+			}
+			return img;
+		}
 
 		function addImages(imgnames,attrs,parent){
 			for(let i=0;i<imgnames.length;i++){
@@ -118,12 +145,11 @@ let go = function() {
 		}
 	}
 
-
 	function drawFunc(e) {
 		if(e.target.funcName==='back'){
 			draw.backLine();
 		}else if(e.target.funcName==='save'){
-
+			draw.save();
 		}
 	}
 
@@ -133,19 +159,21 @@ let go = function() {
 	}
 
 	function resize(){
-		let bound = controller.getBounds();
-		controller.regX = bound.width/2;
-		controller.x = width/2;
-		//controller.y = document.documentElement.clientHeight - bound.height - 30;
-		controller.y = drawContainer.y + drawContainer.getBounds().height/2 + 50;
+		let img = draw.getImage();
+		let maxHeight
+		let imgHeight;
 
-		if(controller.y + bound.height > document.documentElement.clientHeight){
-			rollEvent = rollEvent || container.on('pressmove',roll);
-			limitY = -(controller.y + bound.height - document.documentElement.clientHeight + 50);
-		}else{
-			rollEvent && container.off('pressmove',rollEvent);
-			rollEvent = null;
-		}
+		img.x = marginLr;
+		img.scaleX = img.scaleY = (width - marginLr*2)/img.getBounds().width;
+
+		maxHeight = document.documentElement.clientHeight - controller.getTransformedBounds().height - boardTop;
+		imgHeight = img.getTransformedBounds().height;
+
+		boardHeight.h = imgHeight>maxHeight? maxHeight:imgHeight;
+		drawMask.height.h = boardHeight.h - marginTop - marginBottom;
+		controller.y = boardTop + boardHeight.h;
+
+		stage.update();
 	}
 
 	function swipSlide(e,btn) {
@@ -178,9 +206,7 @@ let go = function() {
 ///画板的构造函数
 (function() {
 
-	let bound = new createjs.Rectangle(0,0,width,height);
 	let line;
-	//let graph = new createjs.Graphics;
 
 	function drawer(color,thick){
 		this.Container_constructor();
@@ -192,7 +218,6 @@ let go = function() {
 		this.custom.color = color||'black';
 		this.custom.thick = thick || 10;
 		this.custom.builder = new createjs.SpriteSheetBuilder;
-		this.custom.staticBoard = this.addChild(new createjs.Container);
 	}
 
 	let p = createjs.extend(drawer,createjs.Container);
@@ -219,7 +244,7 @@ let go = function() {
 	function onup(e) {
 		if(line){
 			if(this.moved){
-				this.custom.staticBoard.addChild(line);
+				this.addChild(line);
 				//line.cache();
 				//line.graphics.store();
 				//line = null;
@@ -232,9 +257,9 @@ let go = function() {
 	}
 
 	p.backLine = function() {
-		if(this.custom.staticBoard.numChildren>1){
-			let unline = this.custom.staticBoard.getChildAt(this.custom.staticBoard.numChildren-1);
-			this.custom.staticBoard.removeChild(unline);
+		if(this.numChildren>1){
+			let unline = this.getChildAt(this.numChildren-1);
+			this.removeChild(unline);
 			stage.update();
 		}
 	}
@@ -249,16 +274,18 @@ let go = function() {
 	}
 
 	p.save = function(){
-		this.custom.builder.addFrame(this,bound);
+		this.custom.builder.addFrame(this,this.getBounds());
 		this.custom.img = createjs.SpriteSheetUtils.extractFrame(this.custom.builder.build(),0);
+		console.log(this.getBounds());
+		window.img = this.custom.img;
+	}
+
+	p.getImage = function() {
+		return this.custom.bgImage;
 	}
 
 	p.addBg = function(o) {
-		let bound = o.getTransformedBounds();
-		this.custom.staticBoard.addChild(o);
-		//this.custom.staticBoard.cache(o.x-bound.width/2,o.y-bound.height/2,bound.width,bound.height)
-		//this.mask = new createjs.Shape;
-		//this.mask.graphics.r(o.x-bound.width/2,o.y-bound.height/2,bound.width,bound.height);
+		this.custom.bgImage = this.addChild(o);
 	}
 
 	Drawer = createjs.promote(drawer,'Container');
