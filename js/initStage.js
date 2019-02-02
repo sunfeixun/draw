@@ -173,6 +173,8 @@ let go = function() {
 		drawMask.height.h = boardHeight.h - marginTop - marginBottom;
 		controller.y = boardTop + boardHeight.h;
 
+		draw.updateCacheArea();
+
 		stage.update();
 	}
 
@@ -218,6 +220,8 @@ let go = function() {
 		this.custom.color = color||'black';
 		this.custom.thick = thick || 10;
 		this.custom.builder = new createjs.SpriteSheetBuilder;
+		this.custom.staticBoard = new createjs.Container;
+		this.addChild(this.custom.staticBoard);
 	}
 
 	let p = createjs.extend(drawer,createjs.Container);
@@ -233,21 +237,18 @@ let go = function() {
 
 	function drawline(e) {
 		this.moved = true;
-		
 		if(!this.custom.ondown)  return;
-
 		this.moved = true;
 		line.graphics.lt(e.localX,e.localY);
-		stage.update()
+		stage.update();
 	}
    
 	function onup(e) {
 		if(line){
 			if(this.moved){
-				this.addChild(line);
-				//line.cache();
-				//line.graphics.store();
-				//line = null;
+				this.custom.staticBoard.addChild(line);
+				this.custom.staticBoard.updateCache();
+				line = null;
 			}else{
 				this.removeChild(line);
 			}
@@ -257,9 +258,10 @@ let go = function() {
 	}
 
 	p.backLine = function() {
-		if(this.numChildren>1){
-			let unline = this.getChildAt(this.numChildren-1);
-			this.removeChild(unline);
+		if(this.custom.staticBoard.numChildren>1){
+			let unline = this.custom.staticBoard.getChildAt(this.custom.staticBoard.numChildren-1);
+			this.custom.staticBoard.removeChild(unline);
+			this.custom.staticBoard.updateCache();
 			stage.update();
 		}
 	}
@@ -285,7 +287,13 @@ let go = function() {
 	}
 
 	p.addBg = function(o) {
-		this.custom.bgImage = this.addChild(o);
+		this.custom.bgImage = this.custom.staticBoard.addChild(o);
+		this.custom.staticBoard.setChildIndex(o,0);
+	}
+
+	p.updateCacheArea = function() {
+		this.custom.staticBoard.uncache();
+		this.custom.staticBoard.cache(0,0,document.documentElement.clientWidth,document.documentElement.clientHeight);
 	}
 
 	Drawer = createjs.promote(drawer,'Container');
