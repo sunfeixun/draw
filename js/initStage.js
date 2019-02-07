@@ -20,6 +20,7 @@ let go = function() {
 	let boardHeight;
 
 	const boardTop = 95, marginTop = 10, marginLr = 10, marginBottom = 5;
+	const showArea = {x:marginLr,y:boardTop+marginTop,width:width-marginLr*2}     //showArea保存显示区域数据（相对于全局）;
 
 	let drawMask = null;
 	let controller, thickButton, thickSlide, slideWidth = 510;
@@ -39,8 +40,7 @@ let go = function() {
 	loadList = null;
 
 	function loadup() {
-		//舞台背景
-		//container.addChild(new createjs.Bitmap(queue.getResult('bg.jpg')));
+
 
 		//画板UI
 		drawContainer = container.addChild(new createjs.Container);
@@ -141,7 +141,7 @@ let go = function() {
 		if(e.target.funcName==='back'){
 			draw.backLine();
 		}else if(e.target.funcName==='save'){
-			draw.save();
+			draw.save(showArea);
 		}
 	}
 
@@ -164,6 +164,8 @@ let go = function() {
 		boardHeight.h = imgHeight>maxHeight? maxHeight:imgHeight;
 		drawMask.height.h = boardHeight.h - marginTop - marginBottom;
 		controller.y = boardTop + boardHeight.h;
+
+		showArea.height = drawMask.height.h
 
 		draw.updateCacheArea();
 
@@ -211,7 +213,6 @@ let go = function() {
 		this.custom = {};
 		this.custom.color = color||'black';
 		this.custom.thick = thick || 10;
-		this.custom.builder = new createjs.SpriteSheetBuilder;
 		this.custom.staticBoard = new createjs.Container;
 		this.addChild(this.custom.staticBoard);
 	}
@@ -245,6 +246,11 @@ let go = function() {
 				this.removeChild(line);
 			}
 		}
+
+		while(this.numChildren>1){
+			this.custom.staticBoard.addChild(this.getChildAt(this.numChildren-1));
+		}
+
 		this.moved = false;
 		this.custom.ondown = false;
 	}
@@ -267,11 +273,20 @@ let go = function() {
 		return this.custom.thick = thick||this.custom.thick;
 	}
 
-	p.save = function(){
-		this.custom.builder.addFrame(this,this.getBounds());
-		this.custom.img = createjs.SpriteSheetUtils.extractFrame(this.custom.builder.build(),0);
-		console.log(this.getBounds());
-		window.img = this.custom.img;
+	p.save = function(area){
+		//area是全局的区域
+		let parent = this.parent;
+		let forPhoto = new createjs.Container;
+		let builder = new createjs.SpriteSheetBuilder;
+		let base64;
+		let blob;
+
+		forPhoto.addChild(this);
+		builder.addFrame(forPhoto,area);
+		base64 = createjs.SpriteSheetUtils.extractFrame(builder.build(),0).src;
+		builder = null;
+		parent.addChild(this);
+		document.getElementById('photoFrame').src = base64;
 	}
 
 	p.getImage = function() {
@@ -285,8 +300,14 @@ let go = function() {
 
 	p.updateCacheArea = function() {
 		this.custom.staticBoard.uncache();
+		let bound = this.getTransformedBounds();
 		this.custom.staticBoard.cache(0,0,document.documentElement.clientWidth,document.documentElement.clientHeight);
+		this.setBounds(0,0,bound.width,bound.height);
 	}
 
 	Drawer = createjs.promote(drawer,'Container');
 })();
+
+function clickphoto(id) {
+	document.getElementById(id).src = "";
+}
